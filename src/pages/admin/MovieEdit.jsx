@@ -12,7 +12,7 @@ import { moviePath, compactNumber } from '../../lib/format.js'
 
 const EMPTY = {
   tmdb_id: '', title: '', original_title: '', release_year: '', language: 'en', poster_url: '', backdrop_url: '', overview: '',
-  sinhala_description: '', genres: '', rating: '', vote_count: '', runtime: '', youtube_video_id: '', published: false,
+  sinhala_description: '', genres: '', rating: '', vote_count: '', runtime: '', youtube_video_id: '', watch_url: '', published: false,
 }
 const toForm = (m) => ({ ...EMPTY, ...Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v ?? ''])), genres: (m.genres || []).join(', '), published: !!m.published })
 export const countWords = (text) => (String(text || '').trim().match(/\S+/g) || []).length
@@ -150,7 +150,7 @@ export default function MovieEdit() {
         tmdb_id: num(form.tmdb_id), title: form.title, original_title: form.original_title, release_year: num(form.release_year), language: form.language,
         poster_url: form.poster_url, backdrop_url: form.backdrop_url, overview: form.overview, sinhala_description: form.sinhala_description,
         genres: form.genres.split(',').map((g) => g.trim()).filter(Boolean), rating: num(form.rating), vote_count: num(form.vote_count), runtime: num(form.runtime),
-        youtube_video_id: ytId || '', published: form.published,
+        youtube_video_id: ytId || '', watch_url: form.watch_url || null, published: form.published,
       })
       setSaved(row)
       setForm(toForm(row))
@@ -330,7 +330,18 @@ export default function MovieEdit() {
           </div>
         </div>
 
-        <h2>3 · Trailer (official YouTube embed)</h2>
+        <h2>3 · Where to watch legally (optional)</h2>
+        <div className="form-grid">
+          <Field
+            label="Link to a legal free copy"
+            className="span-2"
+            hint="Usually the Internet Archive. SubLanka never hosts or links to film files — this points to the film's own legal home so a visitor can attach our subtitle."
+          >
+            <input className="input" type="url" placeholder="https://archive.org/details/…" value={form.watch_url} onChange={set('watch_url')} />
+          </Field>
+        </div>
+
+        <h2>4 · Trailer (official YouTube embed)</h2>
         <div className="form-grid">
           <Field label="YouTube link or video ID" className="span-2" error={ytBad ? 'Not a valid YouTube link / 11-character ID.' : ''} hint="Leave empty if there is no official trailer — the page will say so politely.">
             <input className="input" placeholder="https://www.youtube.com/watch?v=…" value={form.youtube_video_id} onChange={set('youtube_video_id')} />
@@ -394,7 +405,7 @@ export default function MovieEdit() {
 
       <section className="panel">
         <div className="panel-head">
-          <h2>4 · Subtitle files</h2>
+          <h2>5 · Subtitle files</h2>
           {id && (
             <button type="button" className="btn btn-sm" onClick={() => setEditing({})}>
               <Plus /> Add subtitle

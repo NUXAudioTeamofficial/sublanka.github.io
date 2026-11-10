@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Star, Calendar, Clock, Languages, Download, Play, ArrowLeft, Captions, Film, Info } from 'lucide-react'
+import { Star, Calendar, Clock, Languages, Download, Play, ArrowLeft, Captions, Film, Info, ExternalLink } from 'lucide-react'
 import { getMovie, getSubtitles, searchMovies } from '../services/movies.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo, absoluteUrl } from '../lib/seo.js'
@@ -160,7 +160,22 @@ export default function MovieDetail() {
                 <span className="btn btn-lg" aria-disabled="true"><Captions /> උපසිරැසි ළඟදීම</span>
               )}
               {movie.youtube_video_id && <a className="btn btn-ghost btn-lg" href="#trailer"><Play /> ට්‍රේලරය</a>}
+              {movie.watch_url && (
+                <a
+                  className="btn btn-ghost btn-lg"
+                  href={movie.watch_url}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow external"
+                >
+                  <ExternalLink /> නීත්‍යානුකූලව නරඹන්න
+                </a>
+              )}
             </div>
+            {movie.watch_url && (
+              <p className="watch-note">
+                <Info size={14} aria-hidden="true" /> SubLanka තුළ චිත්‍රපට ගබඩා කර හෝ බෙදා හරිනු නොලැබේ. මෙම සබැඳිය චිත්‍රපටය නීත්‍යානුකූලව පළ කර ඇති ස්ථානයට යොමු වේ — එහිදී මෙම උපසිරැසිය භාවිතා කළ හැක.
+              </p>
+            )}
           </div>
         </div>
       </div>

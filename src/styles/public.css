@@ -330,6 +330,8 @@ main { flex: 1; }
 .detail-desc p { font-size: 1.02rem; line-height: 1.9; color: #dedcd5; }
 .detail-desc p.muted { color: var(--muted); }
 .detail-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.watch-note { display: flex; gap: 8px; align-items: flex-start; max-width: 62ch; margin: 14px 0 0; font-size: 0.9rem; line-height: 1.65; color: var(--muted); }
+.watch-note svg { flex: none; margin-top: 4px; color: var(--accent-2); }
 .detail-body { padding-bottom: clamp(48px, 7vw, 96px); }
 .detail-skeleton { display: flex; flex-wrap: wrap; gap: 32px; }
 @media (max-width: 700px) {
