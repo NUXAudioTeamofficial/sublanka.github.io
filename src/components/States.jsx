@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom'
 import { SearchX, CloudOff, Film, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from './MovieCard.jsx'
 
-export function Empty({ icon: Icon = SearchX, title, children, action }) {
+export function Empty({ icon: Icon = SearchX, title, children, action, heading: Heading = 'h2' }) {
   return (
     <div className="empty">
       <span className="empty-icon"><Icon /></span>
-      <h3>{title}</h3>
+      <Heading className="empty-title">{title}</Heading>
       {children && <p>{children}</p>}
       {action}
     </div>

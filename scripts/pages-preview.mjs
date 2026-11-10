@@ -4,6 +4,7 @@
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
+import { gzipSync } from 'node:zlib'
 
 const base = (process.argv[2] || '/').replace(/\/*$/, '/')
 const port = Number(process.argv[3] || 4173)
@@ -12,9 +13,19 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x')
+  // GitHub Pages gzips text files and caches everything for 10 minutes — do the same here,
+  // so local speed measurements are comparable with the real site.
   const send = async (file, status = 200) => {
-    res.writeHead(status, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' })
-    res.end(await readFile(file))
+    const type = types[path.extname(file)] || 'application/octet-stream'
+    let body = await readFile(file)
+    const headers = { 'Content-Type': type, 'Cache-Control': 'max-age=600' }
+    if (/text|javascript|json|xml|svg/.test(type) && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+      body = gzipSync(body)
+      headers['Content-Encoding'] = 'gzip'
+      headers.Vary = 'Accept-Encoding'
+    }
+    res.writeHead(status, headers)
+    res.end(body)
   }
   try {
     if (!url.pathname.startsWith(base)) {

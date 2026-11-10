@@ -30,9 +30,9 @@ export function About() {
         {settings.site_name} — <strong>{settings.tagline}</strong>. ලොව පුරා චිත්‍රපට සිංහලෙන් රසවිඳීමට කැමති අයට උපසිරැසි පහසුවෙන් සොයාගැනීමට, ට්‍රේලරය නැරඹීමට සහ බාගැනීමට හදපු තැනක්.
       </p>
       <div className="about-cards">
-        <div><Search /><h3>සොයන්න</h3><p>නම, වසර, භාෂාව හෝ ප්‍රභේදය අනුව චිත්‍රපට සොයන්න.</p></div>
-        <div><Play /><h3>ට්‍රේලර්</h3><p>නිල YouTube ට්‍රේලරය පිටුවේම නරඹන්න.</p></div>
-        <div><Captions /><h3>උපසිරැසි</h3><p>ඔබේ පිටපතට ගැළපෙන සිංහල උපසිරැසිය බාගන්න.</p></div>
+        <div><Search /><h2>සොයන්න</h2><p>නම, වසර, භාෂාව හෝ ප්‍රභේදය අනුව චිත්‍රපට සොයන්න.</p></div>
+        <div><Play /><h2>ට්‍රේලර්</h2><p>නිල YouTube ට්‍රේලරය පිටුවේම නරඹන්න.</p></div>
+        <div><Captions /><h2>උපසිරැසි</h2><p>ඔබේ පිටපතට ගැළපෙන සිංහල උපසිරැසිය බාගන්න.</p></div>
       </div>
       <h2>අපි කරන දේ සහ නොකරන දේ</h2>
       <ul>
@@ -233,7 +233,7 @@ export function NotFound() {
   useSeo({ title: 'පිටුව හමු නොවීය — 404', description: '', noindex: true, siteName: settings.site_name })
   return (
     <div className="wrap page">
-      <Empty icon={Film} title="404 — පිටුව හමු නොවීය" action={<Link className="btn btn-sm" to="/">මුල් පිටුවට යන්න</Link>}>
+      <Empty heading="h1" icon={Film} title="404 — පිටුව හමු නොවීය" action={<Link className="btn btn-sm" to="/">මුල් පිටුවට යන්න</Link>}>
         ඔබ සොයන පිටුව ඉවත් කර හෝ ලිපිනය වෙනස් කර තිබිය හැක.
       </Empty>
     </div>

@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, ArrowUpRight, ArrowRight, Play, Captions, Film } from 'lucide-react'
-import { searchMovies } from '../services/movies.js'
+import { searchMovies, peekSearch } from '../services/movies.js'
+import { HOME_QUERIES, BACKDROP_SIZES } from '../lib/queries.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo } from '../lib/seo.js'
-import { moviePath, tmdbSize } from '../lib/format.js'
+import { moviePath, backdropSrcSet, tmdbSize } from '../lib/format.js'
 import { langName } from '../lib/constants.js'
 import MovieCard, { Poster } from '../components/MovieCard.jsx'
 import Moonstone from '../components/Moonstone.jsx'
@@ -24,13 +25,21 @@ function BrandScreen() {
   )
 }
 
+const shape = (latest, popular, recent) => ({ status: 'done', latest, popular: popular.filter((m) => m.total_downloads > 0), recent })
 const metaLine = (m) => [m.release_year, langName(m.language)].filter(Boolean).join(' • ')
 
 export default function Home() {
   const { settings } = useSettings()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
-  const [state, setState] = useState({ status: 'loading' })
+  // Start from the last known lists (memory, or the snapshot the build embedded in the page)
+  // so the first paint does not wait for the database; fresh data replaces it right after.
+  const [state, setState] = useState(() => {
+    const latest = peekSearch(HOME_QUERIES.latest)
+    const popular = peekSearch(HOME_QUERIES.popular)
+    const recent = peekSearch(HOME_QUERIES.recent)
+    return latest && popular && recent ? shape(latest, popular, recent) : { status: 'loading' }
+  })
   const cats = [...settings.categories, { code: 'other', en: 'Other', si: 'වෙනත්' }]
 
   useSeo({
@@ -48,19 +57,19 @@ export default function Home() {
   })
 
   const load = useCallback(async () => {
-    setState({ status: 'loading' })
+    setState((s) => (s.status === 'done' ? s : { status: 'loading' }))
     try {
-      const categories = settings.categories
       const [latest, popular, recent] = await Promise.all([
-        searchMovies({ sort: 'latest', withSubs: true, pageSize: 14, categories }),
-        searchMovies({ sort: 'popular', withSubs: true, pageSize: 10, categories }),
-        searchMovies({ sort: 'recent', pageSize: 12, categories }),
+        searchMovies(HOME_QUERIES.latest),
+        searchMovies(HOME_QUERIES.popular),
+        searchMovies(HOME_QUERIES.recent),
       ])
-      setState({ status: 'done', latest, popular: popular.filter((m) => m.total_downloads > 0), recent })
+      setState(shape(latest, popular, recent))
     } catch (error) {
-      setState({ status: 'error', error })
+      // keep showing what we already have; only an empty page turns into an error state
+      setState((s) => (s.status === 'done' ? s : { status: 'error', error }))
     }
-  }, [settings.categories])
+  }, [])
 
   useEffect(() => {
     load()
@@ -81,7 +90,7 @@ export default function Home() {
     <>
       <section className={`hero${spotlight ? ' has-backdrop' : ''}`}>
         <div className="hero-bg" aria-hidden="true">
-          {spotlight && <img src={tmdbSize(spotlight.backdrop_url, 'w1280')} alt="" fetchpriority="high" decoding="async" />}
+          {spotlight && <img src={tmdbSize(spotlight.backdrop_url, 'w780')} srcSet={backdropSrcSet(spotlight.backdrop_url)} sizes={BACKDROP_SIZES} alt="" width="1280" height="720" fetchpriority="high" decoding="async" />}
         </div>
         <div className="wrap hero-inner">
           <div className="hero-copy">
@@ -123,8 +132,8 @@ export default function Home() {
               <>
                 <Moonstone className="hero-rings" />
                 <div className={`feature feature-${fan.length}`}>
-                  <Link to={moviePath(fan[0])} className="feature-main" aria-label={`${fan[0].title}${fan[0].release_year ? ` (${fan[0].release_year})` : ''}`}>
-                    <Poster src={fan[0].poster_url} title={fan[0].title} eager sizes="(max-width: 1000px) 96px, 260px" />
+                  <Link to={moviePath(fan[0])} className="feature-main">
+                    <Poster src={fan[0].poster_url} title={fan[0].title} priority sizes="(max-width: 1000px) 96px, 260px" />
                     <span className="feature-cap">
                       <small>{fan[0].subtitle_count > 0 ? 'අලුත්ම උපසිරැසිය' : 'අලුතින් එක් කළා'}</small>
                       <strong>{fan[0].title}</strong>
@@ -143,7 +152,7 @@ export default function Home() {
                 </div>
               </>
             ) : (
-              !loading && <BrandScreen />
+              loading ? <div className="feature-skel skeleton" aria-hidden="true" /> : <BrandScreen />
             )}
           </div>
         </div>

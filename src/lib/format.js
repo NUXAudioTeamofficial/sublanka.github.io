@@ -34,6 +34,8 @@ export const moviePath = (m) => `/movie/${m.id}-${m.slug || 'movie'}/`
 
 /** TMDB image URLs come in sizes; swap the size segment to build a srcset. */
 export const tmdbSize = (url, size) => (url && url.includes('image.tmdb.org/t/p/') ? url.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`) : url)
+export const backdropSrcSet = (url) =>
+  url && url.includes('image.tmdb.org/t/p/') ? `${tmdbSize(url, 'w780')} 780w, ${tmdbSize(url, 'w1280')} 1280w` : undefined
 export const posterSrcSet = (url) =>
   url && url.includes('image.tmdb.org/t/p/')
     ? `${tmdbSize(url, 'w185')} 185w, ${tmdbSize(url, 'w342')} 342w, ${tmdbSize(url, 'w500')} 500w`

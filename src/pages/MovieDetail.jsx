@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Star, Calendar, Clock, Languages, Download, Play, ArrowLeft, Captions, Film, Info } from 'lucide-react'
-import { getMovie, getSubtitles, searchMovies } from '../services/movies.js'
+import { getMovie, getSubtitles, searchMovies, peekMovie, peekSubtitles } from '../services/movies.js'
+import { BACKDROP_SIZES, DETAIL_POSTER_SIZES } from '../lib/queries.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo, absoluteUrl } from '../lib/seo.js'
-import { moviePath, tmdbSize, runtimeLabel } from '../lib/format.js'
+import { moviePath, tmdbSize, backdropSrcSet, runtimeLabel } from '../lib/format.js'
 import { langName, genreName } from '../lib/constants.js'
 import MovieCard, { Poster } from '../components/MovieCard.jsx'
 import TrailerPlayer from '../components/TrailerPlayer.jsx'
@@ -16,11 +17,18 @@ export default function MovieDetail() {
   const { slug } = useParams()
   const id = parseInt(slug, 10)
   const { settings } = useSettings()
-  const [state, setState] = useState({ status: 'loading' })
+  // Last known copy of this movie (memory, or the snapshot the build embedded in its page):
+  // shown at once, then replaced by the fresh data.
+  const known = () => {
+    const movie = Number.isFinite(id) ? peekMovie(id) : null
+    const subtitles = movie ? peekSubtitles(id) : null
+    return movie && subtitles ? { status: 'done', movie, subtitles, related: [] } : { status: 'loading' }
+  }
+  const [state, setState] = useState(known)
 
   useEffect(() => {
     let alive = true
-    setState({ status: 'loading' })
+    setState(known())
     if (!Number.isFinite(id)) {
       setState({ status: 'missing' })
       return
@@ -30,16 +38,17 @@ export default function MovieDetail() {
         const [movie, subtitles] = await Promise.all([getMovie(id), getSubtitles(id)])
         if (!alive) return
         if (!movie) return setState({ status: 'missing' })
-        setState({ status: 'done', movie, subtitles, related: [] })
+        setState((s) => ({ status: 'done', movie, subtitles, related: s.status === 'done' && s.movie?.id === movie.id ? s.related : [] }))
         const related = await searchMovies({ lang: movie.language, sort: 'latest', pageSize: 9, categories: [] }).catch(() => [])
         if (alive) setState((s) => (s.status === 'done' ? { ...s, related: related.filter((m) => m.id !== movie.id).slice(0, 8) } : s))
       } catch (error) {
-        if (alive) setState({ status: 'error', error })
+        if (alive) setState((s) => (s.status === 'done' ? s : { status: 'error', error }))
       }
     })()
     return () => {
       alive = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const movie = state.movie
@@ -87,7 +96,7 @@ export default function MovieDetail() {
   if (state.status === 'missing') {
     return (
       <div className="wrap page">
-        <Empty icon={Film} title="චිත්‍රපටය හමු නොවීය" action={<Link className="btn btn-sm" to="/browse/">සියලුම චිත්‍රපට බලන්න</Link>}>
+        <Empty heading="h1" icon={Film} title="චිත්‍රපටය හමු නොවීය" action={<Link className="btn btn-sm" to="/browse/">සියලුම චිත්‍රපට බලන්න</Link>}>
           මෙම පිටුව ඉවත් කර තිබීමට හෝ තවම ප්‍රකාශයට පත් කර නොතිබීමට පුළුවන.
         </Empty>
       </div>
@@ -100,14 +109,14 @@ export default function MovieDetail() {
   return (
     <article className="detail">
       <div className="detail-backdrop" aria-hidden="true">
-        {movie.backdrop_url && <img src={tmdbSize(movie.backdrop_url, 'w1280')} alt="" fetchpriority="high" decoding="async" />}
+        {movie.backdrop_url && <img src={tmdbSize(movie.backdrop_url, 'w780')} srcSet={backdropSrcSet(movie.backdrop_url)} sizes={BACKDROP_SIZES} alt="" width="1280" height="720" decoding="async" />}
       </div>
 
       <div className="wrap detail-top">
         <Link to="/browse/" className="back-link"><ArrowLeft /> සියලුම චිත්‍රපට</Link>
         <div className="detail-grid">
           <div className="detail-poster">
-            <Poster src={movie.poster_url} title={movie.title} eager sizes="(max-width: 700px) 60vw, 300px" />
+            <Poster src={movie.poster_url} title={movie.title} priority sizes={DETAIL_POSTER_SIZES} />
           </div>
 
           <div className="detail-head">

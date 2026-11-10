@@ -10,6 +10,8 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { readdirSync } from 'node:fs'
+import { searchArgs, searchKey, movieKey, subsKey, HOME_QUERIES, BROWSE_QUERY, SUBTITLE_COLUMNS, SUBTITLE_ORDER, BACKDROP_SIZES, DETAIL_POSTER_SIZES, CARD_POSTER_SIZES } from '../src/lib/queries.js'
 
 const DIST = path.resolve('dist')
 
@@ -40,8 +42,23 @@ async function api(pathAndQuery) {
   return res.json()
 }
 
+// Same public RPC the browser calls; the result is embedded in the page as a first-paint snapshot.
+async function search(options) {
+  const { args } = searchArgs(options)
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_movies`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
+  // list cards never show the long description, so keep it out of the snapshot
+  const rows = (await res.json()).map(({ sinhala_description, ...row }) => row)
+  return [searchKey(args), rows]
+}
+
 async function loadData() {
-  const fallback = { settings: {}, movies: [], ok: false }
+  const fallback = { settings: {}, movies: [], subtitles: new Map(), lists: null, ok: false }
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.warn('[postbuild] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set — writing static pages only.')
     return fallback
@@ -52,12 +69,28 @@ async function loadData() {
     const movies = []
     for (let from = 0; from < 20000; from += 1000) {
       const page = await api(
-        `movie_cards?select=id,slug,title,original_title,release_year,language,poster_url,backdrop_url,sinhala_description,genres,runtime,updated_at,latest_subtitle_at,subtitle_count&published=eq.true&order=id.asc&limit=1000&offset=${from}`,
+        `movie_cards?select=*&published=is.true&order=id.asc&limit=1000&offset=${from}`,
       )
       movies.push(...page)
       if (page.length < 1000) break
     }
-    return { settings, movies, ok: true }
+    // First-paint snapshots. Optional: if any of this fails the pages simply load their data in the browser as before.
+    let lists = null
+    const subtitles = new Map()
+    try {
+      const [latest, popular, recent, browse] = await Promise.all([search(HOME_QUERIES.latest), search(HOME_QUERIES.popular), search(HOME_QUERIES.recent), search(BROWSE_QUERY)])
+      lists = { latest, popular, recent, browse }
+      for (let from = 0; from < 50000; from += 1000) {
+        const page = await api(`subtitles?published=is.true&select=movie_id,${SUBTITLE_COLUMNS}&order=${SUBTITLE_ORDER}&limit=1000&offset=${from}`)
+        for (const { movie_id, ...sub } of page) subtitles.set(movie_id, [...(subtitles.get(movie_id) || []), sub])
+        if (page.length < 1000) break
+      }
+    } catch (err) {
+      lists = null
+      subtitles.clear()
+      console.warn(`[postbuild] First-paint snapshots skipped (${err.message}).`)
+    }
+    return { settings, movies, subtitles, lists, ok: true }
   } catch (err) {
     console.warn(`[postbuild] Could not read from Supabase (${err.message}). Writing static pages only.`)
     return fallback
@@ -82,22 +115,45 @@ function head({ title, description, url, image, type = 'website', siteName, noin
   return lines.filter(Boolean).join('\n    ')
 }
 
-const tmdbSize = (url, size) => (url && url.includes('image.tmdb.org/t/p/') ? url.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`) : url)
+const isTmdb = (url) => Boolean(url && url.includes('image.tmdb.org/t/p/'))
+const tmdbSize = (url, size) => (isTmdb(url) ? url.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`) : url)
+
+// <link rel="preload"> for the image that will be the largest thing on screen, with the
+// same srcset / sizes the app uses, so the browser fetches exactly one file — early.
+const preloadBackdrop = (url) =>
+  isTmdb(url) ? `<link rel="preload" as="image" href="${esc(tmdbSize(url, 'w780'))}" imagesrcset="${esc(`${tmdbSize(url, 'w780')} 780w, ${tmdbSize(url, 'w1280')} 1280w`)}" imagesizes="${esc(BACKDROP_SIZES)}" fetchpriority="high" />` : ''
+const preloadPoster = (url, sizes) =>
+  isTmdb(url) ? `<link rel="preload" as="image" href="${esc(tmdbSize(url, 'w342'))}" imagesrcset="${esc(`${tmdbSize(url, 'w185')} 185w, ${tmdbSize(url, 'w342')} 342w, ${tmdbSize(url, 'w500')} 500w`)}" imagesizes="${esc(sizes)}" fetchpriority="high" />` : ''
 
 async function main() {
   const template = await readFile(path.join(DIST, 'index.html'), 'utf8')
   if (!template.includes('<!--seo:start-->') || !template.includes('<!--prerender-->')) throw new Error('index.html is missing the seo / prerender markers')
 
-  const { settings, movies, ok } = await loadData()
+  const { settings, movies, subtitles, lists, ok } = await loadData()
+
+  // Tags every page gets: early connection to the database, and the two fonts that draw the first screen.
+  const assetBase = (template.match(/(?:src|href)="([^"]*assets\/)[^"]+\.js"/) || [])[1] || `${BASE}assets/`
+  const fontFile = (re) => (existsSync(path.join(DIST, 'assets')) ? readdirSync(path.join(DIST, 'assets')).find((f) => re.test(f)) : null)
+  const fonts = [fontFile(/^manrope-latin-wght-normal-.*\.woff2$/), fontFile(/^noto-sans-sinhala-sinhala-700-normal-.*\.woff2$/)].filter(Boolean)
+  const commonHead = [
+    SUPABASE_URL ? `<link rel="preconnect" href="${esc(new URL(SUPABASE_URL).origin)}" crossorigin />` : '',
+    ...fonts.map((f) => `<link rel="preload" as="font" type="font/woff2" href="${assetBase}${f}" crossorigin />`),
+  ].filter(Boolean)
+  const seedTag = (cache) => {
+    const data = { at: new Date().toISOString(), settings: ok ? settings : undefined, cache: cache && Object.keys(cache).length ? cache : undefined }
+    return data.settings || data.cache ? `<script id="sl-seed" type="application/json">${ldSafe(data)}</script>` : ''
+  }
   const siteName = settings.site_name || 'SubLanka'
   const tagline = settings.tagline || 'සිංහල උපසිරැසි ලෝකය'
   const siteDescription = settings.description || 'චිත්‍රපට සඳහා සිංහල උපසිරැසි සොයන්න, ට්‍රේලර් නරඹන්න, බාගත කරගන්න.'
   const ogImage = abs('og-image.png')
 
-  const render = (seo, body = '') =>
+  const render = (seo, body = '', { cache = null, preload = [], bare = false } = {}) =>
     template
-      .replace(/<!--seo:start-->[\s\S]*?<!--seo:end-->/, head({ siteName, image: ogImage, ...seo }))
-      .replace('<!--prerender-->', body ? `<div class="boot" data-prerender>${body}</div>` : '')
+      .replace(/<!--seo:start-->[\s\S]*?<!--seo:end-->/, () => head({ siteName, image: ogImage, ...seo }))
+      .replace('<!--head-extra-->', () => [...commonHead, ...preload].filter(Boolean).join('\n    '))
+      .replace('<!--seed-->', () => (bare ? '' : seedTag(cache)))
+      .replace('<!--prerender-->', () => (body ? `<div class="boot" data-prerender>${body}</div>` : ''))
 
   async function write(route, html) {
     const file = path.join(DIST, route, route.endsWith('.html') ? '' : 'index.html')
@@ -125,9 +181,25 @@ async function main() {
     { route: 'terms/', title: `Terms of Use | ${siteName}`, description: `${siteName} භාවිත කිරීමේ කොන්දේසි.`, priority: '0.3', changefreq: 'yearly' },
   ]
 
+  // First-paint snapshots for the two list pages (same cache keys the app computes).
+  const extras = {}
+  if (lists) {
+    const all = [...lists.latest[1], ...lists.recent[1]]
+    extras[''] = {
+      cache: Object.fromEntries([lists.latest, lists.popular, lists.recent]),
+      preload: [preloadBackdrop(all.find((m) => m.backdrop_url)?.backdrop_url)],
+    }
+    extras['browse/'] = { cache: Object.fromEntries([lists.browse]), preload: [preloadPoster(lists.browse[1][0]?.poster_url, CARD_POSTER_SIZES)] }
+  }
+
+  // The text pages live in their own small script: ask for it straight away on those pages.
+  const staticChunk = fontFile(/^StaticPages-.*\.js$/)
+  const textPage = { preload: staticChunk ? [`<link rel="modulepreload" href="${assetBase}${staticChunk}" />`] : [] }
+  for (const p of pages) if (!extras[p.route] && p.route !== '' && p.route !== 'browse/') extras[p.route] = textPage
+
   for (const p of pages) {
     const body = p.body || `<h1>${esc(p.title)}</h1><p>${esc(p.description)}</p>${nav}`
-    await write(p.route, render({ title: p.title, description: p.description, url: abs(p.route), jsonLd: p.jsonLd }, body))
+    await write(p.route, render({ title: p.title, description: p.description, url: abs(p.route), jsonLd: p.jsonLd }, body, extras[p.route]))
   }
 
   for (const m of movies) {
@@ -146,13 +218,15 @@ async function main() {
       ...(m.sinhala_description ? { description } : {}),
     }
     const body = `<h1>${esc(m.title)}${esc(year)} — සිංහල උපසිරැසි</h1><p>${esc(description)}</p>${nav}`
-    await write(route, render({ title, description, url: abs(route), image, type: 'video.movie', jsonLd }, body))
+    const cache = lists ? { [movieKey(m.id)]: [m], [subsKey(m.id)]: subtitles.get(m.id) || [] } : null
+    await write(route, render({ title, description, url: abs(route), image, type: 'video.movie', jsonLd }, body, { cache, preload: [preloadPoster(m.poster_url, DETAIL_POSTER_SIZES)] }))
   }
 
   // Admin shell: real file so /admin/ answers 200, never indexed.
-  await write('admin/', render({ title: `Admin | ${siteName}`, description: 'Administration.', noindex: true }))
+  await write('admin/', render({ title: `Admin | ${siteName}`, description: 'Administration.', noindex: true }, '', { bare: true }))
   // Any other address (e.g. a movie added after the last build, /admin/movies/…) gets this app shell.
   await writeFile(path.join(DIST, '404.html'), render({ title: `${siteName} — ${tagline}`, description: siteDescription, noindex: true }))
+  // (404.html also serves deep links to pages created after this build, so it carries no page-specific data)
 
   const today = new Date().toISOString().slice(0, 10)
   const urls = [

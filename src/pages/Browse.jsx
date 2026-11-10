@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, X, LoaderCircle, Plus } from 'lucide-react'
-import { searchMovies, getGenres, PAGE_SIZE } from '../services/movies.js'
+import { Search, X, LoaderCircle, Plus, Captions } from 'lucide-react'
+import { searchMovies, peekSearch, getFacets, PAGE_SIZE } from '../services/movies.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo } from '../lib/seo.js'
 import { SORTS, genreName, langName } from '../lib/constants.js'
 import MovieCard from '../components/MovieCard.jsx'
 import { Empty, ErrorState, SkeletonCards } from '../components/States.jsx'
+
+const SEARCH_DELAY = 350
 
 export default function Browse() {
   const { settings } = useSettings()
@@ -15,10 +17,22 @@ export default function Browse() {
   const lang = params.get('lang') || ''
   const genre = params.get('genre') || ''
   const sort = SORTS.some((s) => s.id === params.get('sort')) ? params.get('sort') : 'latest'
+  const year = /^(18|19|20)\d{2}$/.test(params.get('year') || '') ? params.get('year') : ''
+  const subsOnly = params.get('subs') === '1'
 
   const [input, setInput] = useState(q)
-  const [genres, setGenres] = useState([])
-  const [state, setState] = useState({ status: 'loading', rows: [], page: 0, hasMore: false })
+  const [facets, setFacets] = useState({ genres: [], years: [] })
+  // The configured categories only matter for the "other languages" filter. Using their content
+  // (not the array identity) keeps the list from being fetched twice when settings arrive.
+  const catsKey = lang === 'other' ? JSON.stringify(settings.categories.map((c) => c.code)) : ''
+  const query = useMemo(
+    () => ({ q, lang, genre, year, sort, withSubs: subsOnly, categories: catsKey ? JSON.parse(catsKey).map((code) => ({ code })) : [] }),
+    [q, lang, genre, year, sort, subsOnly, catsKey],
+  )
+  const [state, setState] = useState(() => {
+    const rows = peekSearch({ ...query, page: 0 })
+    return rows ? { status: 'done', rows, page: 0, hasMore: rows.length >= PAGE_SIZE } : { status: 'loading', rows: [], page: 0, hasMore: false }
+  })
   const requestId = useRef(0)
 
   const cats = [...settings.categories, { code: 'other', en: 'Other', si: 'වෙනත්' }]
@@ -36,30 +50,46 @@ export default function Browse() {
     siteName: settings.site_name,
   })
 
-  useEffect(() => setInput(q), [q])
+  // keep the box in step with the address bar (back / forward), without eating a space the visitor just typed
+  useEffect(() => setInput((cur) => (cur.trim() === q ? cur : q)), [q])
   useEffect(() => {
-    getGenres().then(setGenres).catch(() => {})
+    getFacets().then(setFacets).catch(() => {})
   }, [])
 
-  const update = (patch) => {
+  const update = (patch, replace = false) => {
     const next = new URLSearchParams(params)
     Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)))
-    setParams(next, { replace: false })
+    setParams(next, { replace })
   }
+
+  // Search as you type: wait until typing pauses, and for at least two letters (or an emptied box).
+  useEffect(() => {
+    const next = input.trim()
+    if (next === q || next.length === 1) return undefined
+    const timer = setTimeout(() => update({ q: next }, true), SEARCH_DELAY)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, q])
 
   const fetchPage = useCallback(
     async (page) => {
       const id = ++requestId.current
-      setState((s) => (page === 0 ? { status: 'loading', rows: [], page: 0, hasMore: false } : { ...s, status: 'more' }))
+      if (page === 0) {
+        // show what we already know for this exact list at once, then refresh it quietly
+        const known = peekSearch({ ...query, page: 0 })
+        setState(known ? { status: 'done', rows: known, page: 0, hasMore: known.length >= PAGE_SIZE } : { status: 'loading', rows: [], page: 0, hasMore: false })
+      } else {
+        setState((s) => ({ ...s, status: 'more' }))
+      }
       try {
-        const rows = await searchMovies({ q, lang, genre, sort, page, categories: settings.categories })
+        const rows = await searchMovies({ ...query, page })
         if (id !== requestId.current) return
         setState((s) => ({ status: 'done', rows: page === 0 ? rows : [...s.rows, ...rows.filter((r) => !s.rows.some((x) => x.id === r.id))], page, hasMore: rows.length >= PAGE_SIZE }))
       } catch (error) {
-        if (id === requestId.current) setState((s) => ({ ...s, status: 'error', error }))
+        if (id === requestId.current) setState((s) => (page === 0 && s.status === 'done' ? s : { ...s, status: 'error', error }))
       }
     },
-    [q, lang, genre, sort, settings.categories],
+    [query],
   )
 
   useEffect(() => {
@@ -70,7 +100,8 @@ export default function Browse() {
     e.preventDefault()
     update({ q: input.trim() })
   }
-  const hasFilters = q || lang || genre
+  const hasFilters = q || lang || genre || year || subsOnly
+  const years = year && !facets.years.includes(Number(year)) ? [Number(year), ...facets.years] : facets.years
 
   return (
     <div className="wrap page">
@@ -93,12 +124,21 @@ export default function Browse() {
           <span className="sr-only">ප්‍රභේදය (Genre)</span>
           <select className="select" value={genre} onChange={(e) => update({ genre: e.target.value })}>
             <option value="">සියලු ප්‍රභේද</option>
-            {genres.map((g) => (
+            {facets.genres.map((g) => (
               <option key={g} value={g}>{genreName(g)}{genreName(g) !== g ? ` (${g})` : ''}</option>
             ))}
           </select>
         </label>
-        <label className="filter-select">
+        <label className="filter-select filter-year">
+          <span className="sr-only">වසර (Year)</span>
+          <select className="select" value={year} onChange={(e) => update({ year: e.target.value })}>
+            <option value="">සියලු වසර</option>
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </label>
+        <label className="filter-select filter-sort">
           <span className="sr-only">පිළිවෙළ (Sort)</span>
           <select className="select" value={sort} onChange={(e) => update({ sort: e.target.value === 'latest' ? '' : e.target.value })}>
             {SORTS.map((s) => (
@@ -115,6 +155,9 @@ export default function Browse() {
             {c.si} <small>{c.en}</small>
           </button>
         ))}
+        <button className={`chip chip-subs${subsOnly ? ' is-active' : ''}`} onClick={() => update({ subs: subsOnly ? '' : '1' })} aria-pressed={subsOnly}>
+          <Captions aria-hidden="true" /> උපසිරැසි ඇති ඒවා පමණක්
+        </button>
         {hasFilters && (
           <button className="chip chip-clear" onClick={() => setParams(sort !== 'latest' ? { sort } : {})}>
             <X /> පෙරහන් ඉවත් කරන්න
@@ -135,7 +178,7 @@ export default function Browse() {
         ) : (
           <>
             <div className="grid">
-              {state.status === 'loading' ? <SkeletonCards count={12} /> : state.rows.map((m) => <MovieCard key={m.id} movie={m} showDownloads={sort === 'popular'} />)}
+              {state.status === 'loading' ? <SkeletonCards count={12} /> : state.rows.map((m, i) => <MovieCard key={m.id} movie={m} showDownloads={sort === 'popular'} priority={i < 4} heading="h2" />)}
             </div>
             {state.hasMore && (
               <div className="load-more">

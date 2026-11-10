@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, Children } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 
@@ -30,7 +30,7 @@ export default function Rail({ children, label }) {
         <ChevronLeft />
       </button>
       <div className="rail" ref={ref} role="list" aria-label={label} tabIndex={0}>
-        {children}
+        {Children.map(children, (child) => child && <div role="listitem">{child}</div>)}
       </div>
       <button className="rail-btn rail-next" onClick={() => scroll(1)} aria-label="ඊළඟ">
         <ChevronRight />

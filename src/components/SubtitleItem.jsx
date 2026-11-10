@@ -1,19 +1,21 @@
 import { useState } from 'react'
-import { Download, User, Calendar, Layers, BadgeCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Download, User, Calendar, Layers, BadgeCheck, CircleCheck } from 'lucide-react'
 import { driveDownloadUrl } from '../lib/drive.js'
 import { registerDownload } from '../services/movies.js'
 import { langName, PERMISSIONS } from '../lib/constants.js'
 import { formatDate, compactNumber } from '../lib/format.js'
 
 export default function SubtitleItem({ sub }) {
-  const [count, setCount] = useState(sub.download_count || 0)
   const [done, setDone] = useState(false)
+  // derived, so a refreshed count from the server shows up without losing the visitor's own click
+  const count = (sub.download_count || 0) + (done ? 1 : 0)
   const lang = langName(sub.language)
+  const label = sub.language === 'si' ? 'සිංහල උපසිරැසි බාගන්න' : `${lang} බාගන්න`
 
   const onDownload = () => {
     if (!done) {
       setDone(true)
-      setCount((c) => c + 1)
       registerDownload(sub.id)
     }
   }
@@ -42,10 +44,18 @@ export default function SubtitleItem({ sub }) {
         target="_blank"
         rel="noopener noreferrer nofollow"
         onClick={onDownload}
-        aria-label={`${lang} උපසිරැසිය බාගන්න (${sub.format.toUpperCase()}${sub.version ? ', ' + sub.version : ''})`}
+        aria-label={`${label} — ${sub.format.toUpperCase()}${sub.version ? ', ' + sub.version : ''}`}
       >
-        <Download /> {sub.language === 'si' ? 'සිංහල උපසිරැසි බාගන්න' : `${lang} බාගන්න`}
+        <Download aria-hidden="true" /> {label}
       </a>
+      <p className="sub-status" role="status">
+        {done && (
+          <>
+            <CircleCheck aria-hidden="true" />
+            <span>බාගත කිරීම නව ටැබ් එකක (Google Drive) ආරම්භ විය. ආරම්භ නොවුණේ නම් බොත්තම නැවත ඔබන්න; එසේත් නොහැකි නම් <Link to="/copyright/#contact">අපට දන්වන්න</Link>.</span>
+          </>
+        )}
+      </p>
     </li>
   )
 }

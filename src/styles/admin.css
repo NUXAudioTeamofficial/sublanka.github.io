@@ -30,7 +30,7 @@
 .busy { display: flex; align-items: center; gap: 10px; padding: 26px 4px; color: var(--muted); }
 .pad { padding: 10px 2px; margin: 0; }
 .cap { text-transform: capitalize; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Noto Sans Sinhala', monospace; font-size: 0.88rem; line-height: 1.5; }
+.mono { font-family: var(--mono); font-size: 0.88rem; line-height: 1.5; }
 .hint-bad { color: var(--bad) !important; }
 .ok { color: var(--ok); }
 .bad { color: var(--bad); }
