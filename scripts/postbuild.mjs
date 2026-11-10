@@ -8,7 +8,7 @@
 // pages are still written and movie pages fall back to 404.html (which loads
 // the same app and shows the movie client-side).
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
 const DIST = path.resolve('dist')
@@ -27,6 +27,29 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || ''
 const BASE = (process.env.VITE_BASE_PATH || '/').replace(/\/*$/, '/')
 const SITE_URL = (process.env.VITE_SITE_URL || `http://localhost:4173${BASE}`).replace(/\/*$/, '/')
 const abs = (p = '') => SITE_URL + String(p).replace(/^\/+/, '')
+
+// The Sinhala font is only referenced from inside the CSS bundle, so the browser
+// cannot start downloading it until the CSS has arrived and been parsed. Preloading
+// it here (filenames are hashed, so they are looked up after the build) removes a
+// full round-trip from first paint and cuts the font-swap layout shift.
+let FONT_PRELOAD = ''
+function fontPreloadTags() {
+  const dir = path.join(DIST, 'assets')
+  if (!existsSync(dir)) return ''
+  const all = readdirSync(dir)
+  // Every face the first paint actually needs: Latin (Manrope) + the three Sinhala
+  // weights. Preloading all of them means the swap is over before text is painted,
+  // which is what the footer-shifting CLS came from.
+  const sinhala = (weight) => all.find((f) => f.startsWith('noto-sans-sinhala-sinhala-') && f.includes(`-${weight}-normal-`) && f.endsWith('.woff2'))
+  // "manrope-latin-wght-normal-*" — NOT "manrope-latin-ext-*", which is a different subset.
+  const manrope = all.find((f) => f.startsWith('manrope-latin-wght-normal-') && f.endsWith('.woff2'))
+  // Only the faces the first paint really needs. Preloading the 600 weight too was
+  // measured to cost ~1.3 s of LCP on the movie page for no CLS gain.
+  return [manrope, sinhala(400), sinhala(700)]
+    .filter(Boolean)
+    .map((f) => `<link rel="preload" as="font" type="font/woff2" crossorigin href="${BASE}assets/${f}" />`)
+    .join('\n    ')
+}
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const ldSafe = (obj) => JSON.stringify(obj).replace(/</g, '\\u003c')
@@ -78,6 +101,7 @@ function head({ title, description, url, image, type = 'website', siteName, noin
     '<meta property="og:locale" content="si_LK" />',
     '<meta name="twitter:card" content="summary_large_image" />',
     jsonLd ? `<script type="application/ld+json" data-seo-ld="1">${ldSafe(jsonLd)}</script>` : '',
+    FONT_PRELOAD,
   ]
   return lines.filter(Boolean).join('\n    ')
 }
@@ -88,6 +112,7 @@ async function main() {
   const template = await readFile(path.join(DIST, 'index.html'), 'utf8')
   if (!template.includes('<!--seo:start-->') || !template.includes('<!--prerender-->')) throw new Error('index.html is missing the seo / prerender markers')
 
+  FONT_PRELOAD = fontPreloadTags()
   const { settings, movies, ok } = await loadData()
   const siteName = settings.site_name || 'SubLanka'
   const tagline = settings.tagline || 'සිංහල උපසිරැසි ලෝකය'

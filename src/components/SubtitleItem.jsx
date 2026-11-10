@@ -18,6 +18,9 @@ export default function SubtitleItem({ sub }) {
     }
   }
 
+  // The visible button text must be part of the accessible name (voice control).
+  const cta = sub.language === 'si' ? 'සිංහල උපසිරැසි බාගන්න' : `${lang} බාගන්න`
+
   return (
     <li className="sub">
       <div className="sub-lang" aria-hidden="true">{sub.language.toUpperCase()}</div>
@@ -42,9 +45,9 @@ export default function SubtitleItem({ sub }) {
         target="_blank"
         rel="noopener noreferrer nofollow"
         onClick={onDownload}
-        aria-label={`${lang} උපසිරැසිය බාගන්න (${sub.format.toUpperCase()}${sub.version ? ', ' + sub.version : ''})`}
+        aria-label={`${cta} — ${sub.format.toUpperCase()}${sub.version ? ', ' + sub.version : ''}`}
       >
-        <Download /> {sub.language === 'si' ? 'සිංහල උපසිරැසි බාගන්න' : `${lang} බාගන්න`}
+        <Download /> {cta}
       </a>
     </li>
   )

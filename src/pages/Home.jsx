@@ -123,7 +123,7 @@ export default function Home() {
               <>
                 <Moonstone className="hero-rings" />
                 <div className={`feature feature-${fan.length}`}>
-                  <Link to={moviePath(fan[0])} className="feature-main" aria-label={`${fan[0].title}${fan[0].release_year ? ` (${fan[0].release_year})` : ''}`}>
+                  <Link to={moviePath(fan[0])} className="feature-main">
                     <Poster src={fan[0].poster_url} title={fan[0].title} eager sizes="(max-width: 1000px) 96px, 260px" />
                     <span className="feature-cap">
                       <small>{fan[0].subtitle_count > 0 ? 'අලුත්ම උපසිරැසිය' : 'අලුතින් එක් කළා'}</small>
@@ -156,7 +156,7 @@ export default function Home() {
         {(loading || (state.status === 'done' && state.latest.length > 0)) && (
           <section className="section" aria-labelledby="h-latest">
             <SectionHead kicker="Latest subtitles" title={<span id="h-latest">අලුත්ම උපසිරැසි</span>} to="/browse/?sort=latest" />
-            <Rail label="අලුත්ම උපසිරැසි">
+            <Rail>
               {loading ? <SkeletonCards count={7} /> : state.latest.map((m) => <MovieCard key={m.id} movie={m} />)}
             </Rail>
           </section>
@@ -165,7 +165,7 @@ export default function Home() {
         {state.status === 'done' && state.popular.length > 0 && (
           <section className="section" aria-labelledby="h-popular">
             <SectionHead kicker="Most downloaded" title={<span id="h-popular">ජනප්‍රිය චිත්‍රපට</span>} to="/browse/?sort=popular" />
-            <Rail label="ජනප්‍රිය චිත්‍රපට">
+            <Rail>
               {state.popular.map((m, i) => (
                 <MovieCard key={m.id} movie={m} rank={i + 1} showDownloads />
               ))}

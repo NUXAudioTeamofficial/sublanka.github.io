@@ -4,7 +4,7 @@ import { Star, Calendar, Clock, Languages, Download, Play, ArrowLeft, Captions, 
 import { getMovie, getSubtitles, searchMovies } from '../services/movies.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo, absoluteUrl } from '../lib/seo.js'
-import { moviePath, tmdbSize, runtimeLabel } from '../lib/format.js'
+import { moviePath, tmdbSize, backdropSrcSet, runtimeLabel } from '../lib/format.js'
 import { langName, genreName } from '../lib/constants.js'
 import MovieCard, { Poster } from '../components/MovieCard.jsx'
 import TrailerPlayer from '../components/TrailerPlayer.jsx'
@@ -100,7 +100,16 @@ export default function MovieDetail() {
   return (
     <article className="detail">
       <div className="detail-backdrop" aria-hidden="true">
-        {movie.backdrop_url && <img src={tmdbSize(movie.backdrop_url, 'w1280')} alt="" fetchpriority="high" decoding="async" />}
+        {movie.backdrop_url && (
+          <img
+            src={tmdbSize(movie.backdrop_url, 'w1280')}
+            srcSet={backdropSrcSet(movie.backdrop_url)}
+            sizes="100vw"
+            alt=""
+            fetchpriority="high"
+            decoding="async"
+          />
+        )}
       </div>
 
       <div className="wrap detail-top">

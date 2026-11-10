@@ -33,7 +33,8 @@ export default function TrailerPlayer({ videoId, title }) {
           allowFullScreen
         />
       ) : (
-        <button className="trailer-poster" onClick={() => setPlaying(true)} aria-label={`${title} ට්‍රේලරය වාදනය කරන්න`}>
+        // The accessible label starts with the visible text so voice control works.
+        <button className="trailer-poster" onClick={() => setPlaying(true)} aria-label={`ට්‍රේලරය නරඹන්න • YouTube — ${title}`}>
           {!thumbFailed && <img src={youtubeThumb(videoId)} alt="" loading="lazy" decoding="async" width="480" height="360" onError={() => setThumbFailed(true)} />}
           <span className="trailer-play">
             <Play />

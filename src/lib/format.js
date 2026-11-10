@@ -39,6 +39,12 @@ export const posterSrcSet = (url) =>
     ? `${tmdbSize(url, 'w185')} 185w, ${tmdbSize(url, 'w342')} 342w, ${tmdbSize(url, 'w500')} 500w`
     : undefined
 
+/** Backdrops are full-bleed, so they must scale to the viewport width. */
+export const backdropSrcSet = (url) =>
+  url && url.includes('image.tmdb.org/t/p/')
+    ? `${tmdbSize(url, 'w300')} 300w, ${tmdbSize(url, 'w780')} 780w, ${tmdbSize(url, 'w1280')} 1280w`
+    : undefined
+
 /**
  * Splits a free-text search into structured filters:
  *   "leo 2023 tamil" -> { text: 'leo', year: 2023, lang: 'ta' }

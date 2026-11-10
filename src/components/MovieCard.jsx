@@ -4,7 +4,7 @@ import { Star, Film, Captions, Download } from 'lucide-react'
 import { moviePath, posterSrcSet, tmdbSize, compactNumber } from '../lib/format.js'
 import { langName, genreName } from '../lib/constants.js'
 
-export function Poster({ src, title, sizes = '(max-width: 600px) 45vw, 200px', eager = false }) {
+export function Poster({ src, title, sizes = '(max-width: 600px) 45vw, 200px', eager = false, alt }) {
   const [failed, setFailed] = useState(false)
   // Fade the image in once it has arrived (purely visual; already-cached images show at once).
   const [loaded, setLoaded] = useState(false)
@@ -21,7 +21,7 @@ export function Poster({ src, title, sizes = '(max-width: 600px) 45vw, 200px', e
       src={tmdbSize(src, 'w342')}
       srcSet={posterSrcSet(src)}
       sizes={sizes}
-      alt={`${title} පෝස්ටරය`}
+      alt={alt === undefined ? `${title} පෝස්ටරය` : alt}
       width="342"
       height="513"
       loading={eager ? 'eager' : 'lazy'}
@@ -37,10 +37,13 @@ export function Poster({ src, title, sizes = '(max-width: 600px) 45vw, 200px', e
 export default function MovieCard({ movie, rank, showDownloads = false }) {
   const hasSinhala = movie.subtitle_languages?.includes('si')
   return (
-    <Link to={moviePath(movie)} className={`card${rank ? ' card-ranked' : ''}`} aria-label={`${movie.title}${movie.release_year ? ` (${movie.release_year})` : ''}`}>
+    // No aria-label: the visible title/year/genre already name this link, and an
+    // aria-label that differs from the visible text breaks voice control.
+    <Link to={moviePath(movie)} className={`card${rank ? ' card-ranked' : ''}`}>
       <div className="card-poster">
         {rank && <span className="card-rank" aria-hidden="true">{String(rank).padStart(2, '0')}</span>}
-        <Poster src={movie.poster_url} title={movie.title} />
+        {/* Decorative: the title is right underneath in the card body. */}
+        <Poster src={movie.poster_url} title={movie.title} alt="" />
         <div className="card-badges">
           {movie.rating > 0 && (
             <span className="pill pill-rating">

@@ -20,8 +20,13 @@ export function SectionHead({ kicker, title, to, children }) {
   )
 }
 
-/** Horizontal, swipeable row of cards with arrow buttons on desktop. */
-export default function Rail({ children, label }) {
+/**
+ * Horizontal, swipeable row of cards with arrow buttons on desktop.
+ * No `role="list"`: the cards are plain links, and a `list` role would demand
+ * `listitem` children (which would strip the links of their link semantics).
+ * The surrounding <section> is already labelled by its heading.
+ */
+export default function Rail({ children }) {
   const ref = useRef(null)
   const scroll = (dir) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' })
   return (
@@ -29,7 +34,7 @@ export default function Rail({ children, label }) {
       <button className="rail-btn rail-prev" onClick={() => scroll(-1)} aria-label="පෙර">
         <ChevronLeft />
       </button>
-      <div className="rail" ref={ref} role="list" aria-label={label} tabIndex={0}>
+      <div className="rail" ref={ref} tabIndex={0}>
         {children}
       </div>
       <button className="rail-btn rail-next" onClick={() => scroll(1)} aria-label="ඊළඟ">

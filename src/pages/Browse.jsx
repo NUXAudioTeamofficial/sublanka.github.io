@@ -77,6 +77,8 @@ export default function Browse() {
       <header className="page-head">
         <p className="kicker">{q ? 'Search' : sortInfo.en}</p>
         <h1>{heading}</h1>
+        {/* Keeps the heading order valid: the result cards below use <h3>. */}
+        <h2 className="sr-only">ප්‍රතිඵල</h2>
       </header>
 
       <div className="filters">

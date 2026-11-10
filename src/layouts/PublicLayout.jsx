@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Header from '../components/Header.jsx'
 import Footer from '../components/Footer.jsx'
+import { SkeletonCards } from '../components/States.jsx'
 
 function ScrollManager() {
   const { pathname, hash } = useLocation()
@@ -28,7 +29,17 @@ export default function PublicLayout() {
       <main id="main">
         {/* Re-keyed per page (not per filter change) so each page fades in. */}
         <div className="route" key={pathname}>
-          <Outlet />
+          {/* Route chunks load on demand; the skeleton keeps the layout in place. */}
+          <Suspense
+            fallback={
+              // Deliberately small: a tall skeleton here would itself push the
+              // footer down and hand the page a layout shift before the route
+              // even arrives.
+              <div className="boot" aria-busy="true">පූරණය වෙමින්…</div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </div>
       </main>
       <Footer />
