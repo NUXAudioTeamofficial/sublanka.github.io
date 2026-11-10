@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import '@fontsource-variable/outfit'
+import '@fontsource-variable/manrope'
 import '@fontsource/noto-sans-sinhala/400.css'
 import '@fontsource/noto-sans-sinhala/500.css'
 import '@fontsource/noto-sans-sinhala/600.css'

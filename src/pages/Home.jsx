@@ -1,33 +1,30 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Sparkles, Flame, Clapperboard, ArrowUpRight, Play, Download, Captions, Languages } from 'lucide-react'
+import { Search, ArrowUpRight, ArrowRight, Play, Captions, Film } from 'lucide-react'
 import { searchMovies } from '../services/movies.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo } from '../lib/seo.js'
 import { moviePath, tmdbSize } from '../lib/format.js'
+import { langName } from '../lib/constants.js'
 import MovieCard, { Poster } from '../components/MovieCard.jsx'
+import Moonstone from '../components/Moonstone.jsx'
 import Rail, { SectionHead } from '../components/Rail.jsx'
 import { ErrorState, NoMovies, SkeletonCards } from '../components/States.jsx'
 
-function CaptionDemo() {
+/** Branded hero artwork shown while the catalogue is still empty (no movie data is invented). */
+function BrandScreen() {
   return (
-    <div className="demo" aria-hidden="true">
-      <div className="demo-screen">
-        <span className="demo-play"><Play /></span>
-        <div className="demo-caption">
-          <span>සිංහල උපසිරැසි සමඟ</span>
-          <span>ඔබේ ප්‍රියතම චිත්‍රපටය රසවිඳින්න</span>
-        </div>
-        <div className="demo-bar"><i /></div>
-      </div>
-      <div className="demo-tags">
-        <span><Search /> Find</span>
-        <span><Play /> Trailers</span>
-        <span><Download /> Download</span>
+    <div className="screen" aria-hidden="true">
+      <Moonstone />
+      <div className="screen-cap">
+        <span>චිත්‍රපට ලෝකය දැන්</span>
+        <span>සිංහලෙන් අත්විඳින්න</span>
       </div>
     </div>
   )
 }
+
+const metaLine = (m) => [m.release_year, langName(m.language)].filter(Boolean).join(' • ')
 
 export default function Home() {
   const { settings } = useSettings()
@@ -82,19 +79,19 @@ export default function Home() {
 
   return (
     <>
-      <section className="hero">
+      <section className={`hero${spotlight ? ' has-backdrop' : ''}`}>
         <div className="hero-bg" aria-hidden="true">
           {spotlight && <img src={tmdbSize(spotlight.backdrop_url, 'w1280')} alt="" fetchpriority="high" decoding="async" />}
         </div>
         <div className="wrap hero-inner">
           <div className="hero-copy">
             <p className="hero-kicker">
-              <span>Find</span><i /><span>Watch trailers</span><i /><span>Download</span>
+              <b>{settings.site_name}</b><i /><span>{settings.tagline}</span>
             </p>
             <h1>
-              <span className="grad-text">සිංහල උපසිරැසි</span> ලෝකය
+              ඔබේ ප්‍රියතම චිත්‍රපටයට <em>සිංහල උපසිරැසි</em> සොයාගන්න.
             </h1>
-            <p className="hero-lead">{settings.description}</p>
+            <p className="hero-lead">චිත්‍රපට ලෝකය දැන් සිංහලෙන් අත්විඳින්න.</p>
 
             <form className="hero-search" onSubmit={submit} role="search">
               <Search aria-hidden="true" />
@@ -102,31 +99,51 @@ export default function Home() {
               <button className="btn" type="submit">සොයන්න</button>
             </form>
 
-            <div className="hero-chips" aria-label="භාෂා කාණ්ඩ">
+            <div className="hero-actions">
+              <Link className="btn btn-light" to="/browse/?sort=recent">
+                <Film /> චිත්‍රපට බලන්න
+              </Link>
+              <Link className="btn btn-ghost" to="/browse/">
+                අලුත්ම උපසිරැසි <ArrowRight />
+              </Link>
+            </div>
+
+            <p className="hero-langs" aria-label="භාෂා කාණ්ඩ">
+              <span>භාෂාව අනුව</span>
               {cats.map((c) => (
-                <Link key={c.code} to={`/browse/?lang=${c.code}`} className="chip">
-                  {c.si} <small>{c.en}</small>
+                <Link key={c.code} to={`/browse/?lang=${c.code}`} title={`${c.en} movies`}>
+                  {c.si}
                 </Link>
               ))}
-            </div>
+            </p>
           </div>
 
           <div className="hero-art">
             {fan.length > 0 ? (
-              <div className={`fan fan-${fan.length}`}>
-                {fan.map((m, i) => (
-                  <Link key={m.id} to={moviePath(m)} className="fan-card" style={{ '--i': i }} aria-label={m.title}>
-                    <Poster src={m.poster_url} title={m.title} eager sizes="260px" />
-                    {i === 0 && (
-                      <span className="fan-label">
-                        <Sparkles /> නවතම <b>{m.title}</b>
-                      </span>
-                    )}
+              <>
+                <Moonstone className="hero-rings" />
+                <div className={`feature feature-${fan.length}`}>
+                  <Link to={moviePath(fan[0])} className="feature-main" aria-label={`${fan[0].title}${fan[0].release_year ? ` (${fan[0].release_year})` : ''}`}>
+                    <Poster src={fan[0].poster_url} title={fan[0].title} eager sizes="(max-width: 1000px) 96px, 260px" />
+                    <span className="feature-cap">
+                      <small>{fan[0].subtitle_count > 0 ? 'අලුත්ම උපසිරැසිය' : 'අලුතින් එක් කළා'}</small>
+                      <strong>{fan[0].title}</strong>
+                      <span>{metaLine(fan[0])}</span>
+                    </span>
                   </Link>
-                ))}
-              </div>
+                  {fan.length > 1 && (
+                    <div className="feature-side">
+                      {fan.slice(1).map((m) => (
+                        <Link key={m.id} to={moviePath(m)} className="feature-mini" aria-label={m.title}>
+                          <Poster src={m.poster_url} title={m.title} eager sizes="130px" />
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
-              !loading && <CaptionDemo />
+              !loading && <BrandScreen />
             )}
           </div>
         </div>
@@ -138,8 +155,8 @@ export default function Home() {
 
         {(loading || (state.status === 'done' && state.latest.length > 0)) && (
           <section className="section" aria-labelledby="h-latest">
-            <SectionHead kicker="Latest subtitles" icon={Sparkles} title={<span id="h-latest">නවතම උපසිරැසි</span>} to="/browse/?sort=latest" />
-            <Rail label="නවතම උපසිරැසි">
+            <SectionHead kicker="Latest subtitles" title={<span id="h-latest">අලුත්ම උපසිරැසි</span>} to="/browse/?sort=latest" />
+            <Rail label="අලුත්ම උපසිරැසි">
               {loading ? <SkeletonCards count={7} /> : state.latest.map((m) => <MovieCard key={m.id} movie={m} />)}
             </Rail>
           </section>
@@ -147,8 +164,8 @@ export default function Home() {
 
         {state.status === 'done' && state.popular.length > 0 && (
           <section className="section" aria-labelledby="h-popular">
-            <SectionHead kicker="Popular subtitles" icon={Flame} title={<span id="h-popular">ජනප්‍රිය උපසිරැසි</span>} to="/browse/?sort=popular" />
-            <Rail label="ජනප්‍රිය උපසිරැසි">
+            <SectionHead kicker="Most downloaded" title={<span id="h-popular">ජනප්‍රිය චිත්‍රපට</span>} to="/browse/?sort=popular" />
+            <Rail label="ජනප්‍රිය චිත්‍රපට">
               {state.popular.map((m, i) => (
                 <MovieCard key={m.id} movie={m} rank={i + 1} showDownloads />
               ))}
@@ -157,13 +174,14 @@ export default function Home() {
         )}
 
         <section className="section" aria-labelledby="h-cats">
-          <SectionHead kicker="Browse by language" icon={Languages} title={<span id="h-cats">භාෂාව අනුව තෝරන්න</span>} />
+          <SectionHead kicker="Browse by language" title={<span id="h-cats">භාෂාව අනුව තෝරන්න</span>} />
           <div className="cats">
-            {cats.map((c, i) => (
-              <Link key={c.code} to={`/browse/?lang=${c.code}`} className="cat" style={{ '--h': 258 + i * 14 }}>
+            {cats.map((c) => (
+              <Link key={c.code} to={`/browse/?lang=${c.code}`} className="cat">
                 <span className="cat-code" aria-hidden="true">{c.code === 'other' ? '+' : c.code.toUpperCase()}</span>
                 <span className="cat-name">{c.si}</span>
-                <span className="cat-sub">{c.en} movies <ArrowUpRight /></span>
+                <span className="cat-sub">{c.en} movies</span>
+                <ArrowUpRight className="cat-arrow" aria-hidden="true" />
               </Link>
             ))}
           </div>
@@ -171,17 +189,24 @@ export default function Home() {
 
         {(loading || (state.status === 'done' && state.recent.length > 0)) && (
           <section className="section" aria-labelledby="h-recent">
-            <SectionHead kicker="Recently added movies" icon={Clapperboard} title={<span id="h-recent">මෑතකදී එක් කළ චිත්‍රපට</span>} to="/browse/?sort=recent" />
+            <SectionHead kicker="Recently added" title={<span id="h-recent">අලුතින් එකතු කළ චිත්‍රපට</span>} to="/browse/?sort=recent" />
             <div className="grid">
               {loading ? <SkeletonCards count={12} /> : state.recent.map((m) => <MovieCard key={m.id} movie={m} />)}
             </div>
           </section>
         )}
 
-        <section className="steps" aria-label="භාවිත කරන ආකාරය">
-          <div className="step"><span><Search /></span><h3>සොයන්න</h3><p>චිත්‍රපටයේ නම, වසර හෝ භාෂාව අනුව ඉක්මනින් සොයාගන්න.</p></div>
-          <div className="step"><span><Play /></span><h3>ට්‍රේලරය නරඹන්න</h3><p>නිල YouTube ට්‍රේලරය මෙතැනින්ම නරඹා චිත්‍රපටය තෝරාගන්න.</p></div>
-          <div className="step"><span><Captions /></span><h3>උපසිරැසිය බාගන්න</h3><p>ඔබේ පිටපතට ගැළපෙන සිංහල උපසිරැසිය එක ක්ලික් එකකින්.</p></div>
+        <section className="how" aria-labelledby="h-how">
+          <div className="how-head">
+            <p className="kicker">How it works</p>
+            <h2 id="h-how">පියවර තුනකින් සිංහල උපසිරැසි</h2>
+            <p>{settings.description}</p>
+          </div>
+          <ol className="steps">
+            <li className="step"><span className="step-no" aria-hidden="true">01</span><Search aria-hidden="true" /><h3>සොයන්න</h3><p>චිත්‍රපටයේ නම, වසර හෝ භාෂාව අනුව ඉක්මනින් සොයාගන්න.</p></li>
+            <li className="step"><span className="step-no" aria-hidden="true">02</span><Play aria-hidden="true" /><h3>ට්‍රේලරය නරඹන්න</h3><p>නිල YouTube ට්‍රේලරය මෙතැනින්ම නරඹා චිත්‍රපටය තෝරාගන්න.</p></li>
+            <li className="step"><span className="step-no" aria-hidden="true">03</span><Captions aria-hidden="true" /><h3>උපසිරැසිය බාගන්න</h3><p>ඔබේ පිටපතට ගැළපෙන සිංහල උපසිරැසිය එක ක්ලික් එකකින්.</p></li>
+          </ol>
         </section>
       </div>
     </>

@@ -12,7 +12,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="wrap footer-grid">
         <div className="footer-brand">
-          <Logo />
+          <Logo size={40} tagline />
           <p>{settings.description}</p>
           <p className="footer-safe">
             <ShieldCheck /> උපසිරැසි පමණි — චිත්‍රපට වීඩියෝ ගොනු මෙහි නොමැත.
@@ -20,8 +20,10 @@ export default function Footer() {
         </div>
 
         <nav aria-label="භාෂා කාණ්ඩ">
-          <h3>කාණ්ඩ</h3>
+          <h3>චිත්‍රපට</h3>
           <ul>
+            <li><Link to="/browse/?sort=recent">සියලුම චිත්‍රපට <small>Browse</small></Link></li>
+            <li><Link to="/browse/">අලුත්ම උපසිරැසි <small>Latest</small></Link></li>
             {cats.map((c) => (
               <li key={c.code}>
                 <Link to={`/browse/?lang=${c.code}`}>
@@ -71,6 +73,7 @@ export default function Footer() {
         <p>
           © {year} {settings.site_name}. චිත්‍රපට නාම, පෝස්ටර් සහ ට්‍රේලර්වල සියලු හිමිකම් ඒවායේ නියම අයිතිකරුවන් සතුය.
         </p>
+        <Link className="footer-admin" to="/admin/" rel="nofollow">Admin</Link>
         <a className="tmdb" href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">
           <img src={asset('tmdb.svg')} alt="TMDB" width="92" height="12" loading="lazy" />
           <span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span>

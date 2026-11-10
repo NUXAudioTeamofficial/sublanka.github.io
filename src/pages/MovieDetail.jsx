@@ -110,11 +110,13 @@ export default function MovieDetail() {
             <Poster src={movie.poster_url} title={movie.title} eager sizes="(max-width: 700px) 60vw, 300px" />
           </div>
 
-          <div className="detail-info">
-            <p className="kicker"><Captions /> {subtitles.length > 0 ? 'සිංහල උපසිරැසි • Sinhala Subtitles' : 'Movie'}</p>
+          <div className="detail-head">
+            <p className="kicker">{subtitles.length > 0 ? (sinhala ? 'Sinhala subtitles' : 'Subtitles') : 'Movie'}</p>
             <h1>{movie.title} {year && <span className="detail-year">({year})</span>}</h1>
             {movie.original_title && movie.original_title !== movie.title && <p className="detail-original">මුල් නම: <span lang={movie.language}>{movie.original_title}</span></p>}
+          </div>
 
+          <div className="detail-rest">
             <ul className="facts">
               {movie.rating > 0 && (
                 <li className="fact-rating" title="TMDB user rating">
@@ -124,6 +126,9 @@ export default function MovieDetail() {
               {year && <li><Calendar /> {year}</li>}
               {movie.runtime > 0 && <li><Clock /> {runtimeLabel(movie.runtime)}</li>}
               <li><Languages /> {langName(movie.language)} <small>({langName(movie.language, 'en')})</small></li>
+              <li className={subtitles.length > 0 ? 'fact-subs' : 'fact-nosubs'}>
+                <Captions /> {subtitles.length > 0 ? `උපසිරැසි ${subtitles.length}` : 'උපසිරැසි තවම නැත'}
+              </li>
             </ul>
 
             {movie.genres?.length > 0 && (
@@ -152,13 +157,8 @@ export default function MovieDetail() {
       </div>
 
       <div className="wrap detail-body">
-        <section id="trailer" className="section" aria-labelledby="h-trailer">
-          <SectionHead kicker="Official trailer" icon={Play} title={<span id="h-trailer">ට්‍රේලරය</span>} />
-          <TrailerPlayer videoId={movie.youtube_video_id} title={movie.title} />
-        </section>
-
-        <section id="subtitles" className="section" aria-labelledby="h-subs">
-          <SectionHead kicker={`Subtitles • ${subtitles.length}`} icon={Captions} title={<span id="h-subs">උපසිරැසි බාගත කිරීම්</span>} />
+        <section id="subtitles" className="section section-subs" aria-labelledby="h-subs">
+          <SectionHead kicker={`Subtitles • ${subtitles.length}`} title={<span id="h-subs">උපසිරැසි බාගත කිරීම්</span>} />
           {subtitles.length > 0 ? (
             <>
               <ul className="subs">
@@ -174,9 +174,14 @@ export default function MovieDetail() {
           )}
         </section>
 
+        <section id="trailer" className="section" aria-labelledby="h-trailer">
+          <SectionHead kicker="Official trailer" title={<span id="h-trailer">ට්‍රේලරය</span>} />
+          <TrailerPlayer videoId={movie.youtube_video_id} title={movie.title} />
+        </section>
+
         {related.length > 0 && (
           <section className="section" aria-labelledby="h-related">
-            <SectionHead kicker="More like this" icon={Film} title={<span id="h-related">තවත් {langName(movie.language)} චිත්‍රපට</span>} to={`/browse/?lang=${movie.language}`} />
+            <SectionHead kicker="More like this" title={<span id="h-related">තවත් {langName(movie.language)} චිත්‍රපට</span>} to={`/browse/?lang=${movie.language}`} />
             <Rail label="සමාන චිත්‍රපට">
               {related.map((m) => <MovieCard key={m.id} movie={m} />)}
             </Rail>

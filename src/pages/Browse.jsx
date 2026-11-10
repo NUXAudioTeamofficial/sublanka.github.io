@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, X, LoaderCircle, SlidersHorizontal, Plus } from 'lucide-react'
+import { Search, X, LoaderCircle, Plus } from 'lucide-react'
 import { searchMovies, getGenres, PAGE_SIZE } from '../services/movies.js'
 import { useSettings } from '../context/SettingsContext.jsx'
 import { useSeo } from '../lib/seo.js'
@@ -75,7 +75,7 @@ export default function Browse() {
   return (
     <div className="wrap page">
       <header className="page-head">
-        <p className="kicker"><SlidersHorizontal /> Browse</p>
+        <p className="kicker">{q ? 'Search' : sortInfo.en}</p>
         <h1>{heading}</h1>
       </header>
 
@@ -127,7 +127,7 @@ export default function Browse() {
           <ErrorState error={state.error} onRetry={() => fetchPage(0)} />
         ) : state.status === 'done' && state.rows.length === 0 ? (
           <Empty
-            title="චිත්‍රපටයක් හමු නොවීය"
+            title={q ? 'ඔබ සෙවූ චිත්‍රපටය හමු වුණේ නැහැ.' : 'චිත්‍රපටයක් හමු නොවීය'}
             action={hasFilters ? <button className="btn btn-ghost btn-sm" onClick={() => setParams({})}>සියලුම චිත්‍රපට බලන්න</button> : null}
           >
             {q ? `“${q}” සඳහා ගැළපෙන කිසිවක් නැත. අක්ෂර වින්‍යාසය පරීක්ෂා කරන්න, නැතහොත් වෙනත් නමකින් උත්සාහ කරන්න.` : 'මෙම කාණ්ඩයට තවම චිත්‍රපට එක් කර නැත. ඉක්මනින් නැවත පැමිණෙන්න.'}

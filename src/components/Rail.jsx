@@ -2,15 +2,12 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 
-export function SectionHead({ kicker, title, to, icon: Icon, children }) {
+/** Section title. The small "caption lines" glyph in front of the kicker is drawn in CSS. */
+export function SectionHead({ kicker, title, to, children }) {
   return (
     <div className="section-head">
       <div>
-        {kicker && (
-          <p className="kicker">
-            {Icon && <Icon />} {kicker}
-          </p>
-        )}
+        {kicker && <p className="kicker">{kicker}</p>}
         <h2>{title}</h2>
       </div>
       {children}

@@ -6,6 +6,8 @@ import { langName, genreName } from '../lib/constants.js'
 
 export function Poster({ src, title, sizes = '(max-width: 600px) 45vw, 200px', eager = false }) {
   const [failed, setFailed] = useState(false)
+  // Fade the image in once it has arrived (purely visual; already-cached images show at once).
+  const [loaded, setLoaded] = useState(false)
   if (!src || failed) {
     return (
       <div className="poster-fallback" role="img" aria-label={`${title} — පෝස්ටරයක් නොමැත`}>
@@ -24,6 +26,9 @@ export function Poster({ src, title, sizes = '(max-width: 600px) 45vw, 200px', e
       height="513"
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
+      className={`poster-img${loaded ? ' is-loaded' : ''}`}
+      ref={(el) => el?.complete && el.naturalWidth > 0 && !loaded && setLoaded(true)}
+      onLoad={() => setLoaded(true)}
       onError={() => setFailed(true)}
     />
   )
@@ -33,8 +38,8 @@ export default function MovieCard({ movie, rank, showDownloads = false }) {
   const hasSinhala = movie.subtitle_languages?.includes('si')
   return (
     <Link to={moviePath(movie)} className={`card${rank ? ' card-ranked' : ''}`} aria-label={`${movie.title}${movie.release_year ? ` (${movie.release_year})` : ''}`}>
-      {rank && <span className="card-rank" aria-hidden="true">{rank}</span>}
       <div className="card-poster">
+        {rank && <span className="card-rank" aria-hidden="true">{String(rank).padStart(2, '0')}</span>}
         <Poster src={movie.poster_url} title={movie.title} />
         <div className="card-badges">
           {movie.rating > 0 && (
@@ -74,8 +79,8 @@ export function CardSkeleton() {
     <div className="card" aria-hidden="true">
       <div className="card-poster skeleton" />
       <div className="card-body">
-        <div className="skeleton" style={{ height: 14, width: '80%', borderRadius: 6 }} />
-        <div className="skeleton" style={{ height: 10, width: '45%', borderRadius: 6, marginTop: 8 }} />
+        <div className="skeleton" style={{ height: 14, width: '80%' }} />
+        <div className="skeleton" style={{ height: 10, width: '45%', marginTop: 8 }} />
       </div>
     </div>
   )

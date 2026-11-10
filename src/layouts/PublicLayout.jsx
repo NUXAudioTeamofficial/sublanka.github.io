@@ -19,13 +19,17 @@ function ScrollManager() {
 }
 
 export default function PublicLayout() {
+  const { pathname } = useLocation()
   return (
     <div className="site">
       <a className="skip-link" href="#main">අන්තර්ගතයට යන්න</a>
       <ScrollManager />
       <Header />
       <main id="main">
-        <Outlet />
+        {/* Re-keyed per page (not per filter change) so each page fades in. */}
+        <div className="route" key={pathname}>
+          <Outlet />
+        </div>
       </main>
       <Footer />
     </div>

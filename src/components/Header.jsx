@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useSearchParams } from 'react-router-dom'
-import { Search, Menu, X, House, Globe, ChevronRight } from 'lucide-react'
+import { Search, Menu, X, House, Globe, ChevronRight, ChevronDown, Film, Captions } from 'lucide-react'
 import Logo from './Logo.jsx'
 import SearchOverlay from './SearchOverlay.jsx'
 import { useSettings } from '../context/SettingsContext.jsx'
@@ -12,7 +12,14 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const activeLang = location.pathname.startsWith('/browse') ? params.get('lang') || '' : null
+  const [catsOpen, setCatsOpen] = useState(false)
+  const catsRef = useRef(null)
+  const onBrowse = location.pathname.startsWith('/browse')
+  const activeLang = onBrowse ? params.get('lang') || '' : null
+  // Which top-level item is "current" (presentation only — the links are ordinary URLs).
+  const sortParam = params.get('sort') || 'latest'
+  const latestActive = onBrowse && !activeLang && sortParam === 'latest'
+  const browseActive = onBrowse && !activeLang && sortParam !== 'latest'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -24,7 +31,15 @@ export default function Header() {
   useEffect(() => {
     setMenuOpen(false)
     setSearchOpen(false)
+    setCatsOpen(false)
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (!catsOpen) return undefined
+    const onDown = (e) => !catsRef.current?.contains(e.target) && setCatsOpen(false)
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [catsOpen])
 
   useEffect(() => {
     document.body.classList.toggle('no-scroll', menuOpen || searchOpen)
@@ -40,6 +55,7 @@ export default function Header() {
       if (e.key === 'Escape') {
         setMenuOpen(false)
         setSearchOpen(false)
+        setCatsOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -60,11 +76,24 @@ export default function Header() {
             <NavLink to="/" end className="nav-link">
               මුල් පිටුව
             </NavLink>
-            {cats.map((c) => (
-              <Link key={c.code} to={`/browse/?lang=${c.code}`} className={`nav-link${activeLang === c.code ? ' active' : ''}`} title={`${c.en} movies — Sinhala subtitles`}>
-                {c.si}
-              </Link>
-            ))}
+            <Link to="/browse/?sort=recent" className={`nav-link${browseActive ? ' active' : ''}`} title="Browse movies">
+              චිත්‍රපට
+            </Link>
+            <Link to="/browse/" className={`nav-link${latestActive ? ' active' : ''}`} title="Latest subtitles">
+              අලුත්ම උපසිරැසි
+            </Link>
+            <div className={`nav-menu${catsOpen ? ' is-open' : ''}`} ref={catsRef}>
+              <button type="button" className={`nav-link nav-menu-btn${activeLang ? ' active' : ''}`} aria-haspopup="true" aria-expanded={catsOpen} aria-controls="nav-cats" onClick={() => setCatsOpen((v) => !v)}>
+                භාෂා <ChevronDown />
+              </button>
+              <div className="nav-pop" id="nav-cats">
+                {cats.map((c) => (
+                  <Link key={c.code} to={`/browse/?lang=${c.code}`} className={activeLang === c.code ? 'active' : ''} tabIndex={catsOpen ? 0 : -1} title={`${c.en} movies — Sinhala subtitles`}>
+                    {c.si} <small>{c.en}</small>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </nav>
 
           <div className="header-actions">
@@ -84,15 +113,22 @@ export default function Header() {
         <button className="drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="මෙනුව වසන්න" tabIndex={menuOpen ? 0 : -1} />
         <aside className="drawer-panel" role="dialog" aria-modal="true" aria-label="මෙනුව">
           <div className="drawer-head">
-            <Logo size={32} />
+            <Logo size={34} tagline />
             <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label="වසන්න" tabIndex={menuOpen ? 0 : -1}>
               <X />
             </button>
           </div>
-          <nav className="drawer-nav">
-            <Link to="/" tabIndex={menuOpen ? 0 : -1}>
+          <nav className="drawer-nav" aria-label="මෙනුව">
+            <Link to="/" className={location.pathname === '/' ? 'active' : ''} tabIndex={menuOpen ? 0 : -1}>
               <House /> <span>මුල් පිටුව</span> <small>Home</small> <ChevronRight className="chev" />
             </Link>
+            <Link to="/browse/?sort=recent" className={browseActive ? 'active' : ''} tabIndex={menuOpen ? 0 : -1}>
+              <Film /> <span>චිත්‍රපට</span> <small>Browse</small> <ChevronRight className="chev" />
+            </Link>
+            <Link to="/browse/" className={latestActive ? 'active' : ''} tabIndex={menuOpen ? 0 : -1}>
+              <Captions /> <span>අලුත්ම උපසිරැසි</span> <small>Latest</small> <ChevronRight className="chev" />
+            </Link>
+            <p className="drawer-label">භාෂාව අනුව</p>
             {cats.map((c) => (
               <Link key={c.code} to={`/browse/?lang=${c.code}`} className={activeLang === c.code ? 'active' : ''} tabIndex={menuOpen ? 0 : -1}>
                 <Globe /> <span>{c.si}</span> <small>{c.en}</small> <ChevronRight className="chev" />
